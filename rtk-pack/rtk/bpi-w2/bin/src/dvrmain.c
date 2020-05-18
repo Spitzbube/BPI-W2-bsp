@@ -63,6 +63,14 @@ void dvrmain(void)
 	rebuild_function_pointer_from_uboot_to_dvrmain();
 	init_uart();
 	set_focus_uart(0); //default : uart0
+
+	prints("flash_type: ");
+	prints("SPI\n");
+
+	prints("begin: ");
+
+
+	prints("error identify flash!!\n");
 }
 
 

@@ -17,7 +17,7 @@ BIN  := $(addsuffix .bin,$(ELF))
 DIS  := $(addsuffix .dis,$(ELF))
 
 SOBJS	:= start64.o cache64.o
-COBJS	:= dvrmain.o util.o cache.o
+COBJS	:= dvrmain.o util.o flashdev_s.o cache.o
 
 
 OBJS	:= $(addprefix $(obj),$(COBJS))
@@ -25,6 +25,7 @@ SSOBJS	:= $(addprefix $(obj),$(SOBJS))
 
 
 CFLAGS = -g -Os -fno-common -ffixed-r8 -D__KERNEL__ -fno-builtin -ffreestanding -pipe  -DCONFIG_ARM -D__ARM__  -march=armv8-a -D__EL__ -D__ARM_ARCH_8A__
+CFLAGS += -DBoard_CPU_RTD1295
 
 
 all:	$(OBJS) $(SSOBJS) $(ELF) $(BIN)
@@ -40,7 +41,7 @@ $(ELF): 	$(LIB)
 $(BIN):
 $(obj)%.bin:	$(obj)%
 		$(OBJCOPY) -O binary $< $@ 2>/dev/null
-		$(OBJDUMP) -D $<  >$(DIS) 
+		$(OBJDUMP) -hD $<  >$(DIS) 
 		
 #########################################################################
 

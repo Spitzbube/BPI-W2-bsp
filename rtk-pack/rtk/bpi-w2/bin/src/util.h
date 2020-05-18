@@ -13,4 +13,7 @@ typedef int (*PrintFuncPtr_t)(const char *fmt, ...);
 typedef void (*Flush_Dcache_AllPtr_t)(void);
 typedef void (*Flush_CachePtr_t)(unsigned long start, unsigned long size);
 
+
+extern void * memset(void * s,int c,size_t count);
+
 #endif
