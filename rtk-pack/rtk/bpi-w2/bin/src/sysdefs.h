@@ -2,6 +2,7 @@
 
 typedef unsigned char		UINT8;
 typedef unsigned int		UINT32;
+typedef UINT8			bool;
 
 typedef unsigned long		ulong;
 
@@ -21,4 +22,7 @@ typedef	__u32		u_int32_t;
    typedef unsigned long size_t;
 #endif
 #endif
+
+
+#define REG8( addr )		  (*(volatile UINT8 *) (addr))
 

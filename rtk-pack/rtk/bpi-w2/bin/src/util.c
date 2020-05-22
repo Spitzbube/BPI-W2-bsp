@@ -5,6 +5,8 @@
 #include "uart_reg.h"
 #include "iso_reg.h"
 #include "cache.h"
+#include "flashdev_s.h"
+
 
 
 volatile        UARTREG         *UartReg = (UARTREG *) UARTREG_BASE_ADDRESS; //15AF568
@@ -16,6 +18,20 @@ void sync(void)
     REG32(0x9801a020) = 0x0;
     CP15DMB;
 }
+
+void wait_done(volatile UINT32 *addr, UINT32 mask, UINT32 value){
+	int n = 0;
+	while (((*addr) &mask) != value)
+	{
+		if(n++ > 3000)
+		{
+			prints("Time out \n");
+			return;
+	 	}
+		mdelay(1);
+	}
+}
+
 
 void init_uart(void)
 {
@@ -115,6 +131,32 @@ void print_hex(unsigned int value)
 #endif
 }
 
+void hexdump(const char *str, const void *buf, unsigned int length)
+{
+	unsigned int i;
+	char *ptr = (char *)buf;
+
+	if ((buf == NULL) || (length == 0)) {
+		prints("NULL\n");
+		return;
+	}
+
+	prints(str == NULL ? __FUNCTION__ : str);
+	prints(" (0x");
+	print_hex((UINT32)buf);
+	prints(")\n");
+
+	for (i = 0; i < length; i++) {
+		print_val((unsigned int)(ptr[i]), 2);
+
+		if ((i & 0xf) == 0xf)
+			prints("\n");
+		else
+			prints(" ");
+	}
+	prints("\n");
+}
+
 /**
  * memset - Fill a region of memory with the given value
  * @s: Pointer to the start of the area.
@@ -150,6 +192,14 @@ void * memset(void * s,int c,size_t count)
 }
 
 
+void set_memory(void *dst, UINT8 value, UINT32 size)
+{
+	UINT32 i;
+	for (i=0; i<size; i++)
+		REG8(((UINT32)dst) + i) = value;
+}
+
+
 int swap_endian(UINT32 input)
 {
 	UINT32 output;
@@ -161,4 +211,18 @@ int swap_endian(UINT32 input)
 
 	return output;
 }
+
+void watchdog_reset(void)
+{
+#if 0
+	REG32(MIS_TCWCR) = 0xa5;	// disable watchdog
+	REG32(MIS_TCWTR) = 0x1;		// clear watchdog counter
+
+	// set overflow count
+	REG32(MIS_TCWOV) = 0x0;
+
+	REG32(MIS_TCWCR) = 0;		// enable watchdog
+#endif
+}
+
 
