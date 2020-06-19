@@ -16,16 +16,19 @@ ELF := $(strip $(ELF-y))
 BIN  := $(addsuffix .bin,$(ELF))
 DIS  := $(addsuffix .dis,$(ELF))
 
-SOBJS	:= start64.o vectors.o
-COBJS	:= main.o uart.o todo.o
+SOBJS	:= start64.o vectors.o cache.o
+COBJS	:= timer.o main.o uart.o todo.o
 
 
 OBJS	:= $(addprefix $(obj),$(COBJS))
 SSOBJS	:= $(addprefix $(obj),$(SOBJS)) 
 
+gcclibdir := $(shell dirname `$(CC) -print-libgcc-file-name`)
 
-CFLAGS = -O2 -fno-common -fno-builtin -ffreestanding -fomit-frame-pointer -pipe -march=armv8-a
-
+CFLAGS += -mlittle-endian -mtune=cortex-a53 -march=armv8-a -mcpu=cortex-a53 
+CFLAGS += -march=armv8-a -mlittle-endian -mabi=lp64 -g -O2 -fuse-tls -fomit-frame-pointer -fno-common -fno-pic 
+#CFLAGS += -fno-builtin -ffreestanding
+ 
 all:	$(OBJS) $(SSOBJS) $(ELF) $(BIN)
 
 clean:

@@ -11,7 +11,7 @@ void init_uart(void)
 	*((volatile unsigned int*)ISO_U0SRR) =
 		*((volatile unsigned int*)ISO_U0SRR) | 0x07;
 
-	func_db5c(100);
+	func_c79c(100);
 
 	*((volatile unsigned int*)ISO_MUXPAD0) =
 		(*((volatile unsigned int*)ISO_MUXPAD0) & ~0x3C00) | 0x1400;
@@ -25,14 +25,16 @@ void init_uart(void)
 }
 
 
-void func_6898(void)
+/* 5da8 - complete */
+void func_5da8(void)
 {
 	*((volatile unsigned int*)U0IIR_FCR) = 0x1;
 	*((volatile unsigned int*)U0IIR_FCR) = 0x7;
 }
 
 
-void func_68b4(void)
+/* 5dc4 - complete */
+void func_5dc4(void)
 {
 	*((volatile unsigned int*)U0IIR_FCR) = 0xB7;
 }
@@ -108,5 +110,6 @@ int serial_read(unsigned char  *p_param)
 
 	return 0;
 }
+
 
 
