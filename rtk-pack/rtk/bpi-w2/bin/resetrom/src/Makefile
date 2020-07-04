@@ -17,26 +17,27 @@ BIN  := $(addsuffix .bin,$(ELF))
 DIS  := $(addsuffix .dis,$(ELF))
 
 SOBJS	:= start64.o vectors.o cache.o
-COBJS	:= timer.o main.o uart.o todo.o
-
+COBJS	:= timer.o main.o uart.o utils.o todo.o func1.o
+DOBJS := debug.o
 
 OBJS	:= $(addprefix $(obj),$(COBJS))
 SSOBJS	:= $(addprefix $(obj),$(SOBJS)) 
+DEBUG_OBJS	:= $(addprefix $(obj),$(DOBJS)) 
 
 gcclibdir := $(shell dirname `$(CC) -print-libgcc-file-name`)
 
 CFLAGS += -mlittle-endian -mtune=cortex-a53 -march=armv8-a -mcpu=cortex-a53 
-CFLAGS += -march=armv8-a -mlittle-endian -mabi=lp64 -g -O2 -fuse-tls -fomit-frame-pointer -fno-common -fno-pic 
-#CFLAGS += -fno-builtin -ffreestanding
+CFLAGS += -march=armv8-a -mlittle-endian -mabi=lp64 -g -fuse-tls -fomit-frame-pointer -fno-common -fno-pic 
+CFLAGS += -fno-builtin -ffreestanding
  
-all:	$(OBJS) $(SSOBJS) $(ELF) $(BIN)
+all:	$(OBJS) $(DEBUG_OBJS) $(SSOBJS) $(ELF) $(BIN)
 
 clean:
 	-rm -f resetrom *.o *.bin *.map *.dis
 	
 $(ELF): 	$(LIB) 
 		$(LD) $(LDFLAGS) -g -T resetrom.lds  \
-			-o $@ $(SOBJS) $(COBJS) $(LIB) \
+			-o $@ $(SOBJS) $(COBJS) $(DOBJS) $(LIB) \
 			-L$(gcclibdir) -lgcc -Map resetrom.map
 			
 $(BIN):
@@ -47,10 +48,15 @@ $(obj)%.bin:	$(obj)%
 #########################################################################
 
 OBJ_DIR=.
+
 ASM=$(CC)
-$(OBJ_DIR)/%.o: %.c
-	$(CC) $(CFLAGS) $(DFLAGS) $(IFLAGS) -c  $< -o $@
+
+$(OBJ_DIR)/debug.o: debug.c
+	$(CC) $(CFLAGS)  $(DFLAGS) $(IFLAGS) -c  $< -o $@
 	
+$(OBJ_DIR)/%.o: %.c
+	$(CC) $(CFLAGS) -O2 $(DFLAGS) $(IFLAGS) -c  $< -o $@
+
 $(OBJ_DIR)/%.o: %.S
 	$(ASM) $(ASFLAGS) $(DFLAGS) $(IFLAGS) -c $< -o $@
 	

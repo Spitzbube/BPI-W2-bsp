@@ -12,6 +12,8 @@
 #define CLOCK_ENABLE2						0x98000010
 #define DREQ_MASK							0x9801a138
 
+#define PLL_EMMC1							0x980001F0
+
 #define PWDN_CTRL							0x98000320
 #define PWDN_CTRL2							0x98000324
 #define PWDN_CTRL3							0x98000328
@@ -35,6 +37,8 @@
 
 #define SB2_CHIP_INFO						0x9801a204
 
+#define EMMC_PAD_CTL						0x98012474
+
 #define SYS_muxpad0							0x98012600
 #define SYS_muxpad1							0x98012604
 #define EMMC_PFUNC_CR						0x98012610
@@ -50,6 +54,12 @@
 #define MIS_TC0CR							0x9801B518
 #define MIS_TC0ICR							0x9801B524
 
+#define CTRL3								0x9804cf08
+#define CTRL4								0x9804cf0c
+#define SEC_CTRL1							0x9804cf80
+#define SEC_CTRL3							0x9804cf84
+#define SEC_CTRL4							0x9804cf88
 
-
+#define MIS_GP1DIR							0x9801B104
+#define MIS_GP1DATI							0x9801B124
 

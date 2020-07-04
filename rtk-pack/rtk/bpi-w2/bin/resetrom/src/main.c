@@ -6,7 +6,7 @@
 extern unsigned int d_30;
 
 int Data_8000500C; //8000500C
-int fill_80005010[80];
+
 int Data_80005058; //80005058
 int Data_8000505c; //8000505c
 int Data_80005060; //80005060
@@ -43,102 +43,104 @@ int Data_80006868; //80006868
 int Data_80005b58; //80005b58
 
 
-
-
 void main()
 {
 }
 
 
-extern void func_66b4(unsigned long a, unsigned long b); //void* a, void* b);
+extern void flush_cache(unsigned long a, unsigned long b); //void* a, void* b);
 extern int func_77a0(int a, int b, void* c, void* d);
-extern int func_d6a8(void* a, void* b, int c);
-extern void func_d724(void* a, void* b, int c);
-extern void func_d7f0(char* a, void* b, int c);
+extern int func_d678(unsigned int addr);
+extern int memcmp(char* a, char* b, unsigned int count);
+extern void copy_memory(void *dst, void *src, unsigned int size);
+extern void hexdump(const char* a, void* buf, unsigned int length);
+extern unsigned int do_RSA(unsigned int signature_addr, int b, unsigned int output_addr);
 
+
+
+/* 258 - todo */
+void func_258(void)
+{
+
+}
 
 
 /* ab8 - todo */
-int func_ab8(int a, int b, unsigned long w21, unsigned int w23)
+int func_ab8(int a, int b, unsigned int w21, unsigned int w23)
 {
 	volatile int sp76 = 0;
 	volatile int sp80 = 0;
 	volatile unsigned int sp84 = 0;
 	volatile unsigned int sp88 = 0;
 	volatile int sp92 = 0;
-	unsigned long w19;
-	unsigned long w20;
+	unsigned long hash1; //w19;
+	unsigned long hash2; //w20;
 
 	prints("\n5-5");
 
 	sp88 = d_30 + 0xc40;
-	w19 = d_30 + 0xc20;
+	hash1 = d_30 + 0xc20;
 
 	sp92 = (REG32(ISO_RESERVED_USE_1) >> 1) & 1;
 
 	sync();
 	CP15DSB;
 
-	sp76 = func_77a0(a, b, w19, 0);
+	sp76 = func_77a0(a, b, hash1, 0);
 	if (sp76 != 0)
 	{
 		return sp76;
 	}
 
 	CP15DSB;
-	func_66b4(w19, w19 + 32);
+	flush_cache(hash1, hash1 + 32);
 
 	if (sp92 != 0)
 	{
 		//0xc18
-		func_d7f0("s0 = ", w19, 32);
+		hexdump("s0 = ", hash1, 32);
 		prints("\n");
 	}
 	//b78
 	if (Data_80005058 == 1)
 	{
 		//0xc48
-		func_66b4(w21, w21 + 256);
+		flush_cache(w21, w21 + 256);
 
-		func_d724(sp88, w21, 516);
+		copy_memory(sp88, w21, 516);
 
-		func_66b4(sp88, sp88 + 516);
+		flush_cache(sp88, sp88 + 516);
 
-		sp84 = func_12d0c(sp88, w23, d_30 + 0xc60);
-
-		w20 = sp84;
-
-		func_66b4(d_30 + 0xc40, d_30 + 0xc60);
-
-		func_66b4(w20, w20 + 32);
-
-		sync();
+		sp84 = do_RSA(sp88, w23, d_30 + 0xc60);
+		hash2 = sp84;
 	}
 	else
 	{
 		//b88
-		func_66b4(w21, w21 + 32);
+		flush_cache(w21, w21 + 32);
 
-		func_d724(sp88, w21, 32);
+		copy_memory(sp88, w21, 32);
 
-		w20 = d_30 + 0xc40;
-
-		func_66b4(w20, d_30 + 0xc60);
-		func_66b4(w20, w20 + 32);
-		sync();
+		hash2 = d_30 + 0xc40;
 	}
+
+	flush_cache(d_30 + 0xc40, d_30 + 0xc60);
+
+	flush_cache(hash2, hash2 + 32);
+
+	sync();
 
 	if (sp92 != 0)
 	{
 		//0xcc0
-		func_d7f0("s1 : ", w20, 32);
+		hexdump("s1 : ", hash2, 32);
 	}
 
 	//bd4
 	sync();
 	CP15ISB;
 
-	sp76 = func_d6a8(w19, w20, 32)? 0x3f: 0;
+	sp76 = memcmp(hash1, hash2, 32)? 0x3f: 0;
 	if (sp76)
 	{
 	}
@@ -270,7 +272,7 @@ int func_1244(void)
 		func_85e4(&Data_80005b58);
 	}
 	//1368
-	func_12a50(0);
+	func_12a50(0); //-> init allocator
 	func_d5e0();
 
 	prints("\nC2");
@@ -401,7 +403,7 @@ int func_1244(void)
 }
 
 extern int func_73c0(void* a, int b, void* c, void* d, int e);
-extern unsigned int func_c7b8(int a);
+extern unsigned int swap_endian(int a);
 
 
 /* 161c - todo */
@@ -417,7 +419,7 @@ int func_161c(void)
 	prints("C4 ..\n");
 	prints("b");
 
-	func_66b4(&Data_80005080, (unsigned int)&Data_80005080 + 4);
+	flush_cache(&Data_80005080, (unsigned int)&Data_80005080 + 4);
 
 #if 0
 	if (Data_80005080 == 1)
@@ -517,7 +519,7 @@ int func_161c(void)
 			r0 = *((unsigned int*)(sp32 + sp36 - 4));
 		}
 
-		Data_80005098 = func_c7b8(r0) >> 3;
+		Data_80005098 = swap_endian(r0) >> 3;
 
 		sp40 = sp32 + sp36;
 
@@ -551,6 +553,16 @@ int func_161c(void)
 	}
 	//0x1840
 	func_11b4();
+}
+
+
+/* 6944 - todo */
+void sync(void)
+{
+	CP15DMB;
+	//(*(volatile unsigned int *)(0x9801a020)) =0x0;
+	*((unsigned int*)SB2_SYNC) = 0;
+    CP15DMB;
 }
 
 
