@@ -17,7 +17,7 @@ BIN  := $(addsuffix .bin,$(ELF))
 DIS  := $(addsuffix .dis,$(ELF))
 
 SOBJS	:= start64.o vectors.o cache.o
-COBJS	:= timer.o main.o uart.o utils.o todo.o func1.o
+COBJS	:= timer.o main.o otp.o uart.o utils.o todo.o func1.o
 DOBJS := debug.o
 
 OBJS	:= $(addprefix $(obj),$(COBJS))

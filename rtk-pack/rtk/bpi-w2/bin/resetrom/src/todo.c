@@ -4,10 +4,20 @@
 #include "usb.h"
 
 
+int Data_80005010; //80005010
+char bData_80005020; //80005020  +16
+char bData_80005021; //80005021  +17
+char bData_80005023; //80005023  +19
+unsigned short wData_80005024; //80005024 +20
+int Data_80005078; //80005078 +120
 extern int Data_80005080; //80005080 +128
 int Data_800050B0; //800050B0 +176
 int Data_800050B8; //800050B8 +184
 
+struct dwc3 Data_80005950; //80005950
+
+
+extern unsigned int OTP_JUDGE_BIT(unsigned int offset);
 
 
 /* 12b4 - todo */
@@ -32,11 +42,42 @@ void func_1500(void)
 }
 
 
-/* de8 - todo */
+/* de8 - complete */
 void func_de8(int a)
 {
+#define OTP_BIT_SECUREBOOT		3494 //0xda6
+#define OTP_USB2SRAM			3522 //0xdc2
 
+	if (OTP_JUDGE_BIT(OTP_USB2SRAM) && OTP_JUDGE_BIT(OTP_BIT_SECUREBOOT))
+	{
+		prints("Security: Fobidden to enter USB Device Mode!");
+		while (1);
+	}
+
+	if (a != 1)
+	{
+		REG32(ISO_COLD_RST9) |= (1 << 2);
+
+		func_d8d8();
+
+		sync();
+	}
+	else
+	{
+		Data_80005078 = func_8140();
+
+		if ((Data_80005078 == 1) ||
+				(REG32(ISO_COLD_RST9) & (1 << 2)))
+		{
+			REG32(ISO_COLD_RST9) &= ~(1 << 2);
+
+			prints("u");
+
+			func_a284();
+		}
+	}
 }
+
 
 #if 0
 /* 11b4 - todo */
@@ -318,25 +359,6 @@ int func_84d0(void)
 int func_84f4(void)
 {
 
-}
-
-
-#define OTP_REG_BASE    	 	0x98017000
-
-/* 8a70 - complete */
-int OTP_Get_Word(unsigned int offset, unsigned int* data, unsigned int size)
-{
-	unsigned int i;
-	unsigned int addr = OTP_REG_BASE;
-
-	addr += (offset & ~3);
-
-	for (i = 0; i < size; i++, addr += 4)
-	{
-		data[i] = REG32(addr);
-	}
-
-	return 0;
 }
 
 
@@ -720,6 +742,36 @@ void func_a284(void)
 }
 
 
+/* a320 - todo */
+int dwc3_gadget_init_hw_endpoints(struct dwc3* dwc, char num, int direction)
+{
+	struct dwc3_ep* dep;
+	char i;
+
+	for (i = 0; i < num; i++)
+	{
+		unsigned char epnum = (i << 1) | (!!direction);
+
+		dep = func_12abc(96);
+		memset(dep, 0, 96);
+
+		if (dep == 0)
+		{
+			return -12;
+		}
+
+		dep->dwc = dwc;
+		dep->number = epnum;
+		dep->direction = !!direction;
+		dwc->eps[epnum] = dep;
+
+		dep->endpoint.name = dep->name;
+	}
+
+	return 0;
+}
+
+
 /* a3f4 - todo */
 void func_a3f4(void)
 {
@@ -748,55 +800,127 @@ void func_a3f4(void)
 }
 
 
-/* af2c - todo */
-void func_af2c(void* a)
+/* a708 - todo */
+void func_a708(void* a, int b, void* c, int d, int e)
 {
-	prints("func_af2c");
-	prints("func_af2c");
-	prints("func_af2c");
-	prints("func_af2c");
-	prints("func_af2c");
-	prints("func_af2c");
-	prints("func_af2c");
-	prints("func_af2c");
-	prints("func_af2c");
-	prints("func_af2c");
-	prints("func_af2c");
-	prints("func_af2c");
-	prints("func_af2c");
-	prints("func_af2c");
-	prints("func_af2c");
-	prints("func_af2c");
-	prints("func_af2c");
-	prints("func_af2c");
-	prints("func_af2c");
-	prints("func_af2c");
-	prints("func_af2c");
-	prints("func_af2c");
-	prints("func_af2c");
+	prints("func_a708");
+	prints("func_a708");
+	prints("func_a708");
+	prints("func_a708");
+	prints("func_a708");
+	prints("func_a708");
+	prints("func_a708");
+	prints("func_a708");
+	prints("func_a708");
+	prints("func_a708");
+	prints("func_a708");
+	prints("func_a708");
+	prints("func_a708");
+	prints("func_a708");
+	prints("func_a708");
+	prints("func_a708");
+	prints("func_a708");
+	prints("func_a708");
+	prints("func_a708");
+	prints("func_a708");
 }
 
 
-int Data_80005950; //80005950
-struct
+/* a8fc - todo */
+void func_a8fc(struct dwc3_ep*, void* b)
 {
-	void* Data_0;
-}* Data_800059D0; //800059D0 80005950 + 128
-int Data_80005AEC; //80005AEC 80005950 + 412
+	prints("func_a8fc");
+	prints("func_a8fc");
+	prints("func_a8fc");
+	prints("func_a8fc");
+	prints("func_a8fc");
+	prints("func_a8fc");
+	prints("func_a8fc");
+	prints("func_a8fc");
+	prints("func_a8fc");
+	prints("func_a8fc");
+	prints("func_a8fc");
+	prints("func_a8fc");
+	prints("func_a8fc");
+	prints("func_a8fc");
+	prints("func_a8fc");
+}
 
 
-/* func_b04c - todo */
+/* af2c - todo */
+int func_af2c(struct dwc3* x19)
+{
+	int ret;
+	unsigned int reg;
+
+	x19->Data_0 = func_12abc(8);
+	memset(x19->Data_0, 0, 8);
+
+	x19->Data_8 = func_12abc(16);
+	memset(x19->Data_8, 0, 16);
+
+	x19->Data_16 = func_12abc(16);
+	memset(x19->Data_16, 0, 16);
+
+	x19->num_out_eps = 3;
+	x19->num_in_eps = 3;
+
+	ret = dwc3_gadget_init_hw_endpoints(x19, x19->num_out_eps, 0);
+	if (ret < 0)
+	{
+		return ret;
+	}
+
+	ret = dwc3_gadget_init_hw_endpoints(x19, x19->num_in_eps, 1);
+	if (ret < 0)
+	{
+		return ret;
+	}
+
+	reg = dwc3_readl(DWC3_DCFG);
+	dwc3_writel(DWC3_DCFG, reg);
+
+	wData_80005024 = 0x40;
+	bData_80005020 = 0x07;
+	bData_80005021 = 0x05;
+	bData_80005023 = 0x00;
+
+	func_a8fc(x19->eps[0], &Data_80005010);
+	func_a8fc(x19->eps[1], &Data_80005010);
+
+	x19->Data_440 = 1;
+
+	func_a708(x19, 0, x19->Data_0, 8, 32);
+
+	/* Enable all but Start and End of Frame IRQs */
+	reg = (DWC3_DEVTEN_VNDRDEVTSTRCVEDEN |
+			DWC3_DEVTEN_EVNTOVERFLOWEN |
+			DWC3_DEVTEN_CMDCMPLTEN |
+			DWC3_DEVTEN_ERRTICERREN |
+			DWC3_DEVTEN_WKUPEVTEN |
+			DWC3_DEVTEN_ULSTCNGEN |
+			DWC3_DEVTEN_CONNECTDONEEN |
+			DWC3_DEVTEN_USBRSTEN |
+			DWC3_DEVTEN_DISCONNEVTEN);
+
+	dwc3_writel(DWC3_DEVTEN, reg); //0x1e1f);
+
+	return 0;
+}
+
+
+/* b04c - todo */
 void func_b04c(void)
 {
 	unsigned int reg;
-	struct dwc3_event_buffer* evt; //x20
+	struct dwc3_event_buffer* evt;
 
 	prints("u3-1\n");
 
-	Data_80005AEC = 1;
+	Data_80005950.Data_412 = 1;
 
-	Data_800059D0 = func_12abc(8); //malloc
-	memset(Data_800059D0, 0, 8);
+	Data_80005950.ev_buffs = func_12abc(8); //malloc
+	memset(Data_80005950.ev_buffs, 0, 8);
 
 	evt = func_12abc(sizeof(*evt)); //malloc
 	memset(evt, 0, sizeof(*evt));
@@ -806,7 +930,7 @@ void func_b04c(void)
 	evt->buf = func_12abc(DWC3_EVENT_BUFFERS_SIZE);
 	memset(evt->buf, 0, DWC3_EVENT_BUFFERS_SIZE);
 
-	Data_800059D0->Data_0 = evt;
+	Data_80005950.ev_buffs[0] = evt;
 
 	func_a3f4();
 

@@ -23,13 +23,13 @@
 #define ISO_DUMMY2							0x98007058
 #define ISO_RESERVED_USE_1					0x98007078
 #define ISO_MUXPAD0							0x98007310
+#define ISO_COLD_RST9						0x98007678
 #define ISO_U0SRR							0x98007888
 #define ISO_SB2_0							0x98007F00
 
 
 #define UART0_REG_BASE						0x98007800
 #define UART1_REG_BASE						0x9801B200
-
 
 #define INV_INTEN							0x9801A004
 
@@ -62,4 +62,12 @@
 
 #define MIS_GP1DIR							0x9801B104
 #define MIS_GP1DATI							0x9801B124
+
+#define MIS_TCWCR							0x9801B5B0
+#define MIS_TCWTR							0x9801B5B4
+#define MIS_TCWOV							0x9801B5BC
+
+
+
+
 

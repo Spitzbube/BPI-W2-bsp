@@ -74,6 +74,16 @@ void hexdump(char* a, void* buf, unsigned int length)
 }
 
 
+/* d8d8 - todo */
+void func_d8d8(void)
+{
+	REG32(MIS_TCWCR) = 0xa5; //wden
+	REG32(MIS_TCWTR) = 1; //wdclr = 1
+	REG32(MIS_TCWOV) = 1 << 23; //sel
+	REG32(MIS_TCWCR) = 0;
+}
+
+
 unsigned int Data_80005038; //80005038
 unsigned int Data_8000503C; //8000503C
 unsigned int Data_80005040; //80005040
