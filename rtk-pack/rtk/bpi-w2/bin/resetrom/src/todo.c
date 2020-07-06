@@ -2,13 +2,11 @@
 #include "uart.h"
 #include "timer.h"
 #include "usb.h"
+#include "usb_ch9.h"
 
 
-int Data_80005010; //80005010
-char bData_80005020; //80005020  +16
-char bData_80005021; //80005021  +17
-char bData_80005023; //80005023  +19
-unsigned short wData_80005024; //80005024 +20
+struct usb_endpoint_descriptor Data_80005020;
+
 int Data_80005078; //80005078 +120
 extern int Data_80005080; //80005080 +128
 int Data_800050B0; //800050B0 +176
@@ -773,77 +771,250 @@ int dwc3_gadget_init_hw_endpoints(struct dwc3* dwc, char num, int direction)
 
 
 /* a3f4 - todo */
-void func_a3f4(void)
+int dwc3_event_buffers_setup(void)
 {
-	prints("func_a3f4");
-	prints("func_a3f4");
-	prints("func_a3f4");
-	prints("func_a3f4");
-	prints("func_a3f4");
-	prints("func_a3f4");
-	prints("func_a3f4");
-	prints("func_a3f4");
-	prints("func_a3f4");
-	prints("func_a3f4");
-	prints("func_a3f4");
-	prints("func_a3f4");
-	prints("func_a3f4");
-	prints("func_a3f4");
-	prints("func_a3f4");
-	prints("func_a3f4");
-	prints("func_a3f4");
-	prints("func_a3f4");
-	prints("func_a3f4");
-	prints("func_a3f4");
-	prints("func_a3f4");
-	prints("func_a3f4");
+	struct dwc3_event_buffer* evt;
+	int i;
+
+	for (i = 0; i < Data_80005950.num_event_buffers; i++)
+	{
+		evt = Data_80005950.ev_buffs[i];
+
+		evt->lpos = 0;
+
+		dwc3_writel(DWC3_GEVNTADRLO(i), (unsigned int)(evt->buf));
+		dwc3_writel(DWC3_GEVNTADRHI(i), 0);
+		dwc3_writel(DWC3_GEVNTSIZ(i), (unsigned short)(evt->length));
+		dwc3_writel(DWC3_GEVNTCOUNT(i), 0);
+	}
+
+	return 0;
 }
 
 
-/* a708 - todo */
-void func_a708(void* a, int b, void* c, int d, int e)
+/* a654 - complete */
+int dwc3_send_gadget_ep_cmd(struct dwc3* dwc, unsigned int ep, unsigned int cmd,
+		struct dwc3_gadget_ep_cmd_params* params)
 {
-	prints("func_a708");
-	prints("func_a708");
-	prints("func_a708");
-	prints("func_a708");
-	prints("func_a708");
-	prints("func_a708");
-	prints("func_a708");
-	prints("func_a708");
-	prints("func_a708");
-	prints("func_a708");
-	prints("func_a708");
-	prints("func_a708");
-	prints("func_a708");
-	prints("func_a708");
-	prints("func_a708");
-	prints("func_a708");
-	prints("func_a708");
-	prints("func_a708");
-	prints("func_a708");
-	prints("func_a708");
+	unsigned int timeout = 500;
+	unsigned int reg;
+
+	dwc3_writel(DWC3_DEPCMDPAR0(ep), params->param0);
+	dwc3_writel(DWC3_DEPCMDPAR1(ep), params->param1);
+	dwc3_writel(DWC3_DEPCMDPAR2(ep), params->param2);
+
+	sync();
+
+	dwc3_writel(DWC3_DEPCMD(ep), cmd | DWC3_DEPCMD_CMDACT);
+
+	do
+	{
+		sync();
+
+		reg = dwc3_readl(DWC3_DEPCMD(ep));
+
+		if (!(reg & DWC3_DEPCMD_CMDACT))
+		{
+			return 0;
+		}
+
+		/*
+		 * We can't sleep here, because it is also called from
+		 * interrupt context.
+		 */
+		timeout--;
+		if (!timeout)
+		{
+			prints("send cmd timeout\n");
+			return -110; //ETIMEDOUT;
+		}
+
+		udelay(0, 1);
+	}
+	while (1);
 }
 
 
-/* a8fc - todo */
-void func_a8fc(struct dwc3_ep*, void* b)
+static inline unsigned int dwc3_gadget_ep_get_transfer_index(char number)
 {
-	prints("func_a8fc");
-	prints("func_a8fc");
-	prints("func_a8fc");
-	prints("func_a8fc");
-	prints("func_a8fc");
-	prints("func_a8fc");
-	prints("func_a8fc");
-	prints("func_a8fc");
-	prints("func_a8fc");
-	prints("func_a8fc");
-	prints("func_a8fc");
-	prints("func_a8fc");
-	prints("func_a8fc");
-	prints("func_a8fc");
-	prints("func_a8fc");
+	unsigned int res_id;
+
+	res_id = dwc3_readl(DWC3_DEPCMD(number));
+
+	return DWC3_DEPCMD_GET_RSC_IDX(res_id);
+}
+
+
+/* a708 - complete */
+int dwc3_ep0_start_trans(struct dwc3* dwc, char epnum, unsigned int buf, unsigned int len, unsigned int type)
+{
+	struct dwc3_gadget_ep_cmd_params params;
+	struct dwc3_trb* trb;
+	struct dwc3_ep* dep;
+	int ret;
+
+	dep = dwc->eps[epnum];
+
+	sync();
+
+	if (dep->flags & DWC3_EP_BUSY)
+	{
+		prints("dwc->dev ep0 still busy\n");
+		return 0;
+	}
+
+	trb = dwc->Data_8;
+
+	trb->bpl = buf;
+	trb->bph = 0;
+	trb->size = len;
+	trb->ctrl = type;
+
+	trb->ctrl |= (DWC3_TRB_CTRL_HWO
+			| DWC3_TRB_CTRL_ISP_IMI);
+
+	trb->ctrl |= (DWC3_TRB_CTRL_IOC
+			| DWC3_TRB_CTRL_LST);
+
+	memset(&params, 0, sizeof(params));
+
+	params.param0 = 0;
+	params.param1 = dwc->Data_8;
+
+	ret = dwc3_send_gadget_ep_cmd(dwc, dep->number,
+			DWC3_DEPCMD_STARTTRANSFER, &params);
+	if (ret < 0)
+	{
+		return ret;
+	}
+
+	dep->resource_index = dwc3_gadget_ep_get_transfer_index(dep->number);
+
+	return 0;
+}
+
+
+/* inlined */
+static int dwc3_gadget_start_config(struct dwc3 *dwc, struct dwc3_ep *dep)
+{
+	struct dwc3_gadget_ep_cmd_params params;
+	unsigned int cmd;
+
+	memset(&params, 0x00, sizeof(params));
+
+	if (dep->number != 1)
+	{
+		cmd = DWC3_DEPCMD_DEPSTARTCFG;
+		/* XferRscIdx == 0 for ep0 and 2 for the remaining */
+		if (dep->number > 1)
+		{
+			if (dwc->start_config_issued)
+			{
+				return 0;
+			}
+
+			dwc->start_config_issued = 1;
+			cmd |= DWC3_DEPCMD_PARAM(2);
+		}
+
+		return dwc3_send_gadget_ep_cmd(dwc, 0, cmd, &params);
+	}
+
+	return 0;
+}
+
+/* inlined */
+static int dwc3_gadget_set_ep_config(struct dwc3 *dwc, struct dwc3_ep *dep,
+		const struct usb_endpoint_descriptor *desc)
+{
+	struct dwc3_gadget_ep_cmd_params params;
+
+	memset(&params, 0x00, sizeof(params));
+
+	params.param0 = DWC3_DEPCFG_EP_TYPE(usb_endpoint_type(desc))
+		| DWC3_DEPCFG_MAX_PACKET_SIZE(/*usb_endpoint_maxp(desc)*/512);
+
+	params.param0 |= DWC3_DEPCFG_BURST_SIZE(6);
+
+	params.param1 = DWC3_DEPCFG_XFER_COMPLETE_EN
+		| DWC3_DEPCFG_XFER_NOT_READY_EN;
+	/*
+	 * We are doing 1:1 mapping for endpoints, meaning
+	 * Physical Endpoints 2 maps to Logical Endpoint 2 and
+	 * so on. We consider the direction bit as part of the physical
+	 * endpoint number. So USB endpoint 0x81 is 0x03.
+	 */
+	params.param1 |= DWC3_DEPCFG_EP_NUMBER(dep->number);
+
+	/*
+	 * We must use the lower 16 TX FIFOs even though
+	 * HW might have more
+	 */
+	if (dep->direction)
+	{
+		params.param0 |= DWC3_DEPCFG_FIFO_NUMBER(dep->number >> 1);
+	}
+
+	return dwc3_send_gadget_ep_cmd(dwc, dep->number,
+			DWC3_DEPCMD_SETEPCONFIG, &params);
+}
+
+
+/* inlined */
+static int dwc3_gadget_set_xfer_resource(struct dwc3 *dwc, struct dwc3_ep *dep)
+{
+	struct dwc3_gadget_ep_cmd_params params;
+
+	memset(&params, 0x00, sizeof(params));
+
+	params.param0 = DWC3_DEPXFERCFG_NUM_XFER_RES(1);
+
+	return dwc3_send_gadget_ep_cmd(dwc, dep->number,
+			DWC3_DEPCMD_SETTRANSFRESOURCE, &params);
+}
+
+
+/* a8fc - complete */
+int __dwc3_gadget_ep_enable(struct dwc3_ep* dep, struct usb_endpoint_descriptor* desc)
+{
+	struct dwc3* dwc = dep->dwc;
+	unsigned int reg;
+	int ret;
+
+	if (!(dep->flags & DWC3_EP_ENABLED))
+	{
+		ret = dwc3_gadget_start_config(dwc, dep);
+		if (ret)
+		{
+			return ret;
+		}
+	}
+
+	ret = dwc3_gadget_set_ep_config(dwc, dep, desc);
+	if (ret != 0)
+	{
+		prints("ep enable fail\n");
+		return ret;
+	}
+
+	if (!(dep->flags & DWC3_EP_ENABLED))
+	{
+		ret = dwc3_gadget_set_xfer_resource(dwc, dep);
+		if (ret != 0)
+		{
+			return ret;
+		}
+
+		dep->endpoint.desc = desc;
+		dep->type = usb_endpoint_type(desc);
+		dep->flags |= DWC3_EP_ENABLED;
+
+		reg = dwc3_readl(DWC3_DALEPENA);
+		reg |= DWC3_DALEPENA_EP(dep->number);
+		dwc3_writel(DWC3_DALEPENA, reg);
+	}
+
+	return 0;
 }
 
 
@@ -880,17 +1051,18 @@ int func_af2c(struct dwc3* x19)
 	reg = dwc3_readl(DWC3_DCFG);
 	dwc3_writel(DWC3_DCFG, reg);
 
-	wData_80005024 = 0x40;
-	bData_80005020 = 0x07;
-	bData_80005021 = 0x05;
-	bData_80005023 = 0x00;
+	Data_80005020.wMaxPacketSize = 64;
+	Data_80005020.bLength = 7;
+	Data_80005020.bDescriptorType = USB_DT_ENDPOINT;
+	Data_80005020.bmAttributes = 0;
 
-	func_a8fc(x19->eps[0], &Data_80005010);
-	func_a8fc(x19->eps[1], &Data_80005010);
+	__dwc3_gadget_ep_enable(x19->eps[0], &Data_80005020);
+	__dwc3_gadget_ep_enable(x19->eps[1], &Data_80005020);
 
-	x19->Data_440 = 1;
+	x19->Data_440 = 1; //ep0state = EP0_SETUP_PHASE ?
 
-	func_a708(x19, 0, x19->Data_0, 8, 32);
+	dwc3_ep0_start_trans(x19, 0, x19->Data_0, 8,
+			DWC3_TRBCTL_CONTROL_SETUP);
 
 	/* Enable all but Start and End of Frame IRQs */
 	reg = (DWC3_DEVTEN_VNDRDEVTSTRCVEDEN |
@@ -917,7 +1089,7 @@ void func_b04c(void)
 
 	prints("u3-1\n");
 
-	Data_80005950.Data_412 = 1;
+	Data_80005950.num_event_buffers = 1;
 
 	Data_80005950.ev_buffs = func_12abc(8); //malloc
 	memset(Data_80005950.ev_buffs, 0, 8);
@@ -932,7 +1104,7 @@ void func_b04c(void)
 
 	Data_80005950.ev_buffs[0] = evt;
 
-	func_a3f4();
+	dwc3_event_buffers_setup();
 
 	func_af2c(&Data_80005950);
 
