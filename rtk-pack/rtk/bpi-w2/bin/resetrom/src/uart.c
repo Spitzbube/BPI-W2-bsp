@@ -3,6 +3,7 @@
 
 
 volatile UARTREG *UartReg = (UARTREG *) UARTREG_BASE_ADDRESS; //80005048
+int Data_80005348[256];
 int Data_80005dd4; //80005dd4
 
 
@@ -112,4 +113,13 @@ int serial_read(unsigned char  *p_param)
 }
 
 
+/* 65b8 - todo */
+void func_65b8(void)
+{
+	int r9;
 
+	for (r9 = 0; r9 < 256; r9++)
+	{
+		Data_80005348[r9] = 42; //TODO
+	}
+}

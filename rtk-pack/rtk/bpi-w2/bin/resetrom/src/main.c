@@ -569,3 +569,23 @@ void sync(void)
 
 
 
+/* 66b4 - todo */
+void flush_cache(unsigned long start, unsigned long size)
+{
+	if (Data_80005084 != 0)
+	{
+		CP15DSB;
+		CP15DMB;
+
+		REG32(SB2_SYNC) = 0;
+		CP15DMB;
+
+		__asm_flush_dcache_range(start, size);
+		CP15DMB;
+
+		REG32(SB2_SYNC) = 0;
+		CP15DMB;
+	}
+}
+
+

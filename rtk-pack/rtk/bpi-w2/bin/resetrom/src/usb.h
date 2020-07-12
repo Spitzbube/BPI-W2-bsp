@@ -10,6 +10,7 @@
 
 #define REG_GUSB2PHYACC0			0x180 + REG_USB3BASE//(0x18028280)
 
+#define DWC3_GEVNTCOUNT_MASK	0xfffc
 #define DWC3_GSNPSID_MASK	0xffff0000
 
 #define DWC3_GLOBALS_REGS_START		0xc100
@@ -100,6 +101,7 @@
 /* DEPXFERCFG parameter 0 */
 #define DWC3_DEPXFERCFG_NUM_XFER_RES(n)	((n) & 0xffff)
 
+#define DWC3_GEVNTSIZ_INTMASK		(1 << 31)
 
 /* TRB Control */
 #define DWC3_TRB_CTRL_HWO		(1 << 0)
@@ -121,6 +123,24 @@
 #define DWC3_TRBCTL_LINK_TRB		DWC3_TRB_CTRL_TRBCTL(8)
 
 
+#define DWC3_EVENT_TYPE_DEV		0
+
+
+#define DWC3_DEVICE_EVENT_DISCONNECT		0
+#define DWC3_DEVICE_EVENT_RESET			1
+#define DWC3_DEVICE_EVENT_CONNECT_DONE		2
+#define DWC3_DEVICE_EVENT_LINK_STATUS_CHANGE	3
+#define DWC3_DEVICE_EVENT_WAKEUP		4
+#define DWC3_DEVICE_EVENT_HIBER_REQ		5
+#define DWC3_DEVICE_EVENT_EOPF			6
+#define DWC3_DEVICE_EVENT_SOF			7
+#define DWC3_DEVICE_EVENT_ERRATIC_ERROR		9
+#define DWC3_DEVICE_EVENT_CMD_CMPL		10
+#define DWC3_DEVICE_EVENT_OVERFLOW		11
+
+/* Device Configuration Register */
+#define DWC3_DCFG_DEVADDR(addr)	((addr) << 3)
+#define DWC3_DCFG_DEVADDR_MASK	DWC3_DCFG_DEVADDR(0x7f)
 
 struct dwc3_gadget_ep_cmd_params
 {
@@ -175,12 +195,20 @@ struct dwc3_ep
 };
 
 
+enum dwc3_ep0_state {
+	EP0_UNCONNECTED		= 0,
+	EP0_SETUP_PHASE,
+	EP0_DATA_PHASE,
+	EP0_STATUS_PHASE, //3
+};
+
+
 struct dwc3_event_buffer {
 	void			*buf; //0
 	unsigned		length; //8
 	unsigned int		lpos; //12
-	unsigned int		count;
-	unsigned int		flags;
+	unsigned int		count; //16
+	unsigned int		flags; //20
 
 #define DWC3_EVENT_PENDING	(1UL << 0)
 
@@ -217,14 +245,18 @@ struct dwc3
 	int fill_392[5]; //392
 	unsigned int num_event_buffers; //412 80005AEC
 	int fill_416[4]; //416
+
 #if 0
 	char bData_432; //432
 #else
-	unsigned		needs_fifo_resize:1;	//432:0x01
-	unsigned		pullups_connected:1;	//432:0x02
-	unsigned		resize_fifos:1;			//432:0x04
-	unsigned		setup_packet_pending:1;	//432:0x08
-	unsigned		start_config_issued:1;	//432:0x10
+	unsigned		three_stage_setup:1; //0x02
+	unsigned		setup_packet_pending:1;	//0x20
+
+	unsigned		ep0_expect_in:1;
+	unsigned		needs_fifo_resize:1;	//432:0x01 //TODO
+	unsigned		pullups_connected:1;	//432:0x02 //TODO
+	unsigned		resize_fifos:1;			//432:0x04 //TODO
+	unsigned		start_config_issued:1;	//432:0x10 //TODO
 #endif
 	int fill_436; //436
 	int Data_440; //440 ep0state?
@@ -232,6 +264,78 @@ struct dwc3
 	char fill_456; //456
 	char num_out_eps; //457
 	char num_in_eps; //458
+
+	int Data_488; //488
+	int Data_492; //492
+	int Data_496; //496
+};
+
+
+struct dwc3_event_type
+{
+	unsigned int	is_devspec:1;
+	unsigned int	type:7;
+	unsigned int	reserved8_31:24;
+} __attribute__ ((packed)); //__packed;
+
+
+#define DWC3_DEPEVT_XFERCOMPLETE	0x01
+#define DWC3_DEPEVT_XFERINPROGRESS	0x02
+#define DWC3_DEPEVT_XFERNOTREADY	0x03
+#define DWC3_DEPEVT_RXTXFIFOEVT		0x04
+#define DWC3_DEPEVT_STREAMEVT		0x06
+#define DWC3_DEPEVT_EPCMDCMPLT		0x07
+
+
+struct dwc3_event_depevt
+{
+	unsigned int	one_bit:1; //0
+	unsigned int	endpoint_number:5; //1...5
+	unsigned int	endpoint_event:4; //6...9
+	unsigned int	reserved11_10:2; //10...11
+	unsigned int	status:4; //12..15
+
+/* Within XferNotReady */
+#define DEPEVT_STATUS_TRANSFER_ACTIVE	(1 << 3)
+
+/* Within XferComplete */
+#define DEPEVT_STATUS_BUSERR	(1 << 0)
+#define DEPEVT_STATUS_SHORT	(1 << 1)
+#define DEPEVT_STATUS_IOC	(1 << 2)
+#define DEPEVT_STATUS_LST	(1 << 3)
+
+/* Stream event only */
+#define DEPEVT_STREAMEVT_FOUND		1
+#define DEPEVT_STREAMEVT_NOTFOUND	2
+
+/* Control-only Status */
+#define DEPEVT_STATUS_CONTROL_DATA	1
+#define DEPEVT_STATUS_CONTROL_STATUS	2
+
+	unsigned int	parameters:16;
+} __attribute__ ((packed)); //__packed;
+
+
+struct dwc3_event_devt
+{
+	unsigned int	one_bit:1;
+	unsigned int	device_event:7;
+	unsigned int	type:4;
+	unsigned int	reserved15_12:4;
+	unsigned int	event_info:9;
+	unsigned int	reserved31_25:7;
+} __attribute__ ((packed)); //__packed;
+
+
+union dwc3_event
+{
+	unsigned int				raw;
+	struct dwc3_event_type		type;
+	struct dwc3_event_depevt	depevt;
+	struct dwc3_event_devt		devt;
+#if 0
+	struct dwc3_event_gevt		gevt;
+#endif
 };
 
 

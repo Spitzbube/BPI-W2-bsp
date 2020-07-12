@@ -39,3 +39,30 @@ void dwc3_set_mode(unsigned int mode)
 }
 
 
+
+void dwc3_gadget_disconnect_interrupt()
+{
+
+}
+
+
+void dwc3_gadget_reset_interrupt()
+{
+
+}
+
+
+void dwc3_gadget_conndone_interrupt()
+{
+
+}
+
+
+void dwc3_gadget_wakeup_interrupt()
+{
+
+}
+
+
+
+
