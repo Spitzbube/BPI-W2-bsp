@@ -67,7 +67,7 @@
 #define MIS_TCWTR							0x9801B5B4
 #define MIS_TCWOV							0x9801B5BC
 
-
+#define DUMMY_0								0x9801A600
 
 
 

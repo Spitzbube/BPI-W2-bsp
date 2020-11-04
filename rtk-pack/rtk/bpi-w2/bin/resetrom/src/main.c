@@ -5,25 +5,23 @@
 
 extern unsigned int d_30;
 
-int Data_8000500C; //8000500C
-
-int Data_80005058; //80005058
-int Data_8000505c; //8000505c
-int Data_80005060; //80005060
-int Data_80005064; //80005064 0x80005058+12
-int Data_80005068; //80005068 0x80005058+16
-int fill_8000506c;
-int fill_80005070;
-int fill_80005074;
-int fill_80005078;
-int Data_8000507C; //8000507C
-int Data_80005080; //80005080 0x80005058+40
-int Data_80005084; //80005084
-unsigned int Data_80005088; //80005088 0x80005058+48
-unsigned int Data_8000508C; //8000508C 0x80005058+52
-int Data_80005090; //80005090 0x80005058+56
-int Data_80005094; //80005094 0x80005058+60
-int Data_80005098; //80005098
+int Data_80005058 = 0; //80005058
+int Data_8000505c = 0; //8000505c
+int Data_80005060 = 0; //80005060
+int Data_80005064 = 0; //80005064 0x80005058+12
+int Data_80005068=  0; //80005068 0x80005058+16
+int Data_8000506c = 0;
+int Data_80005070 = 0;
+int Data_80005074 = 0;
+int Data_80005078 = 0;
+int Data_8000507C = 0; //8000507C
+int Data_80005080 = 0; //80005080 0x80005058+40
+int Data_80005084 = 0; //80005084
+unsigned int Data_80005088 = 0; //80005088 0x80005058+48
+unsigned int Data_8000508C = 0; //8000508C 0x80005058+52
+int Data_80005090 = 0; //80005090 0x80005058+56
+int Data_80005094 = 0; //80005094 0x80005058+60
+int Data_80005098 = 0; //80005098
 
 struct
 {
@@ -48,25 +46,18 @@ void main()
 }
 
 
-extern void flush_cache(unsigned long a, unsigned long b); //void* a, void* b);
+extern void flush_cache(unsigned long a, unsigned int b); //void* a, void* b);
 extern int func_77a0(int a, int b, void* c, void* d);
 extern int func_d678(unsigned int addr);
 extern int memcmp(char* a, char* b, unsigned int count);
-extern void copy_memory(void *dst, void *src, unsigned int size);
+extern void copy_memory(unsigned long dst, unsigned int src, unsigned int size);
 extern void hexdump(const char* a, void* buf, unsigned int length);
 extern unsigned int do_RSA(unsigned int signature_addr, int b, unsigned int output_addr);
 
 
 
-/* 258 - todo */
-void func_258(void)
-{
-
-}
-
-
 /* ab8 - todo */
-int func_ab8(int a, int b, unsigned int w21, unsigned int w23)
+static inline int func_ab8(int a, int b, unsigned int w21, unsigned int w23)
 {
 	volatile int sp76 = 0;
 	volatile int sp80 = 0;
@@ -146,6 +137,226 @@ int func_ab8(int a, int b, unsigned int w21, unsigned int w23)
 	}
 
 	return sp76;
+}
+
+
+/* cd8 - todo */
+void func_cd8(void)
+{
+	extern int UartReg;
+	extern struct
+	{
+		int Data_80005BB8;
+		int Data_80005bbc;
+		int Data_80005bc0;
+		int Data_80005bc4;
+
+	} Data_80005BB8;
+	extern int Data_80005bbc;
+	extern int Data_80005bc0;
+	extern int Data_80005bc4;
+	unsigned short reg;
+
+	//	Data_80005BB8 = 0xabcdef12;
+    Data_80005BB8.Data_80005BB8 = 0xabcdef12;
+
+	UartReg = UARTREG_BASE_ADDRESS;
+
+	reg = REG32(DUMMY_0);
+
+	Data_8000505c = 0x20000;
+	Data_80005060 = 0;
+	Data_80005064 = 0xfe;
+	Data_80005068 = 0;
+    Data_8000506c = 0;
+	Data_80005070 = 0x10100100;
+    Data_80005074 = 0;
+    Data_80005078 = 0;
+	Data_8000507C = 0x98017000;
+    Data_80005080 = 1;
+
+    Data_80005BB8.Data_80005bc0 = 0xa1b2c3d4;
+    Data_80005BB8.Data_80005bbc = 0x13572468;
+    Data_80005BB8.Data_80005bc4 = 0x9090babe;
+
+    if (reg == 0xFFFF)
+    {
+    	REG32(DUMMY_0) = 0;
+    }
+
+    Data_80005084 = 0;
+}
+
+
+/* d94 - complete */
+void func_d94(void)
+{
+	if ((REG32(ISO_DUMMY1) & 0xff000000) == 0xff000000)
+	{
+		REG32(ISO_DUMMY1) &= 0x01;
+	}
+
+	if ((REG32(ISO_DUMMY2) & 0xff000000) == 0xff000000)
+	{
+		REG32(ISO_DUMMY2) = 0;
+	}
+}
+
+
+/* de8 - complete */
+void func_de8(int a)
+{
+#define OTP_BIT_SECUREBOOT		3494 //0xda6
+#define OTP_USB2SRAM			3522 //0xdc2
+
+	if (OTP_JUDGE_BIT(OTP_USB2SRAM) && OTP_JUDGE_BIT(OTP_BIT_SECUREBOOT))
+	{
+		prints("Security: Fobidden to enter USB Device Mode!");
+		while (1);
+	}
+
+	if (a != 1)
+	{
+		REG32(ISO_COLD_RST9) |= (1 << 2);
+
+		func_d8d8();
+
+		sync();
+	}
+	else
+	{
+		Data_80005078 = func_8140();
+
+		if ((Data_80005078 == 1) ||
+				(REG32(ISO_COLD_RST9) & (1 << 2)))
+		{
+			REG32(ISO_COLD_RST9) &= ~(1 << 2);
+
+			prints("u");
+
+			func_a284();
+		}
+	}
+}
+
+
+/* e94 - todo */
+int func_e94(unsigned int a, unsigned int w19, unsigned int w20/*->w23*/)
+{
+#if 0
+	volatile unsigned int sp76;
+	volatile unsigned int sp80;
+	volatile unsigned int sp84;
+	volatile unsigned int sp88;
+	volatile unsigned int sp92;
+#endif
+	int w25;
+	int w24;
+	int ret;
+#if 0
+	unsigned long hash1; //w19
+	unsigned long hash2; //w20
+	int w22 = a + w19;
+#endif
+
+	flush_cache(a, a + w19); //w22);
+
+	if (Data_80005058 == 1)
+	{
+		//0x102c
+		ret = func_73c0(a, w19, w20, &Data_80005b58, 0);
+		if (ret != 0)
+		{
+			return ret;
+		}
+	}
+	//ecc
+	flush_cache(w20, w20 + w19);
+
+#if 1
+	ret = func_ab8(w20, swap_endian_volatile(((unsigned int*)(w20 + w19 - 4))[0]) >> 3, a + w19, Data_8000507C);
+	return (ret == 0)? 0: 59;
+#else
+	w25 = swap_endian_volatile(((unsigned int*)(w20 + w19 - 4))[0]);
+
+	w24 = Data_8000507C;
+
+	sp76 = 0;
+	sp80 = 0;
+	sp84 = 0;
+	sp88 = 0;
+	sp92 = 0;
+
+	prints("\n5-5");
+
+	sp88 = d_30 + 0xc40;
+	hash1/*w19*/ = d_30 + 0xc20;
+
+	sp92 = !!(REG32(ISO_RESERVED_USE_1) & 2);
+
+	sync();
+	CP15DSB;
+
+	sp76 = func_77a0(w20, w25 >> 3, hash1/*w19*/, 0);
+	if (sp76 == 0)
+	{
+		//0xf8c
+		CP15DSB;
+
+		flush_cache(hash1/*w19*/, hash1/*w19*/ + 0x20);
+
+		if (sp92 != 0)
+		{
+			//0x1064
+			hexdump("s0 = ", hash1/*w19*/, 0x20);
+			prints("\n");
+		}
+		//0xfa4
+		if (Data_80005058 == 1)
+		{
+			//0x10a0
+			flush_cache(w22, w22 + 0x100);
+			copy_memory(sp88, w22, 0x204);
+			flush_cache(sp88, sp88 + 0x204);
+
+			sp84 = do_RSA(sp88, w24, d_30 + 0xc60);
+
+			hash2/*w20*/ = sp84;
+			//w0 = d_30 + 0xc40;
+		}
+		else
+		{
+			//fb0
+			flush_cache(w22, w22 + 0x20);
+			copy_memory(sp88, w22, 0x20);
+
+			hash2/*w20*/ = d_30 + 0xc40;
+			//fd8
+		}
+		//fdc
+		flush_cache(d_30 + 0xc40, d_30 + 0xc60);
+
+		flush_cache(hash2/*w20*/, hash2/*w20*/ + 0x20);
+
+		sync();
+
+		CP15ISB;
+
+		sp76 = memcmp(hash1/*w19*/, hash2/*w20*/, 32)? 0x3f: 0;
+		if (sp76)
+		{
+		}
+	}
+	//f68
+	return (sp76 == 0)? 0: 59;
+#endif
+}
+
+
+/* 11b0 - todo */
+void func_11b0(void)
+{
+	func_d8d8();
 }
 
 
@@ -526,6 +737,7 @@ int func_161c(void)
 		prints("\n5-4");
 
 		//1730
+#if 0
 		if (Data_80005058 == 1)
 		{
 			w20 = func_ab8(sp44, Data_80005098, sp40, Data_8000507C);
@@ -534,6 +746,7 @@ int func_161c(void)
 		{
 			w20 = func_ab8(sp32, Data_80005098, sp40, Data_8000507C);
 		}
+#endif
 	}
     //17f8
 	prints("C6\n");
@@ -556,36 +769,37 @@ int func_161c(void)
 }
 
 
-/* 6944 - todo */
-void sync(void)
+/* 1844 - todo */
+void func_1844(int a)
 {
-	CP15DMB;
-	//(*(volatile unsigned int *)(0x9801a020)) =0x0;
-	*((unsigned int*)SB2_SYNC) = 0;
-    CP15DMB;
-}
-
-
-
-
-
-/* 66b4 - todo */
-void flush_cache(unsigned long start, unsigned long size)
-{
-	if (Data_80005084 != 0)
-	{
-		CP15DSB;
-		CP15DMB;
-
-		REG32(SB2_SYNC) = 0;
-		CP15DMB;
-
-		__asm_flush_dcache_range(start, size);
-		CP15DMB;
-
-		REG32(SB2_SYNC) = 0;
-		CP15DMB;
-	}
+	prints("func_1844");
+	prints("func_1844");
+	prints("func_1844");
+	prints("func_1844");
+	prints("func_1844");
+	prints("func_1844");
+	prints("func_1844");
+	prints("func_1844");
+	prints("func_1844");
+	prints("func_1844");
+	prints("func_1844");
+	prints("func_1844");
+	prints("func_1844");
+	prints("func_1844");
+	prints("func_1844");
+	prints("func_1844");
+	prints("func_1844");
+	prints("func_1844");
+	prints("func_1844");
+	prints("func_1844");
+	prints("func_1844");
+	prints("func_1844");
+	prints("func_1844");
+	prints("func_1844");
+	prints("func_1844");
+	prints("func_1844");
+	prints("func_1844");
+	prints("func_1844");
 }
 
 

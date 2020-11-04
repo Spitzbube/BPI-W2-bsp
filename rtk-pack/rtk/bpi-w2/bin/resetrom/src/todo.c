@@ -4,11 +4,17 @@
 #include "usb.h"
 #include "usb_ch9.h"
 
+extern unsigned int simple_malloc(unsigned int n_bytes);
 extern unsigned int func_12abc(unsigned int n_bytes);
 
+struct usb_endpoint_descriptor __attribute__((aligned(16))) Data_80005010 = {USB_DT_ENDPOINT_SIZE,               0, 0, 2, 0, 0};
+struct usb_endpoint_descriptor __attribute__((aligned(16))) Data_80005020 = {USB_DT_ENDPOINT_SIZE, USB_DT_ENDPOINT, 0, 0, 0, 0};
 
-struct usb_endpoint_descriptor Data_80005010;
-struct usb_endpoint_descriptor Data_80005020;
+
+//int Data_80005028 = 0; //80005028
+int Data_8000502C = 1; //8000502C
+int Data_80005030 = 1; //80005030
+//int Data_80005034 = 0; //80005034
 
 int Data_80005078; //80005078 +120
 extern int Data_80005080; //80005080 +128
@@ -20,6 +26,13 @@ struct Struct_80005748_
 	void* Data_80005748; //80005748 0x80005000 +1864
 	void* Data_80005750; //80005750 80005748 +8
 	void* Data_80005758; //80005758 80005748 +16
+
+	struct
+	{
+		void* Data_0; //0
+		unsigned short wData_8; //8
+		//16
+	} Data_96[8];
 
 	void* Data_800057A8; //800057A8 +96
 	unsigned short wData_800057B0; //800057B0 +104
@@ -33,6 +46,9 @@ struct Struct_80005748_
 	void* Data_800057D8; //800057D8 +144
 	unsigned short wData_800057E0; //800057E0 +152
 
+	//800057E8 +160
+	//800057F8 +176
+
 	void* Data_80005808; //80005808 +192
 	unsigned short wData_80005810; //80005810 +200
 
@@ -43,6 +59,7 @@ struct Struct_80005748_
 
 	char bData_800058B9; //800058B9 80005748 +369
 	char bData_800058BA; //800058BA
+	unsigned short wData_800058BE; //800058BE +374
 
 	char* Data_800058D0; //800058D0 +392
 
@@ -52,7 +69,14 @@ struct Struct_80005748_
 
 //	struct usb_device_descriptor Data_80005938; //80005938 +496
 
-} volatile Data_80005748_; //80005748
+} /*volatile*/ Data_80005748_; //80005748
+
+struct
+{
+	void* Data_0; //0
+	unsigned short wData_8; //8
+	//16
+} Data_96[8];
 
 struct usb_device_descriptor Data_80005938; //80005938 +496
 struct dwc3 Data_80005950; //80005950
@@ -65,11 +89,12 @@ struct bla
 } bla;
 
 void* volatile Data_80005748; //80005748 0x80005000 +1864
-void* volatile Data_80005750; //80005750
+void* /*volatile*/ Data_80005750; //80005750
 void* volatile Data_80005758; //80005758
 
-//80005790
-//80005798
+void* Data_80005788; //80005788 80005748 +64
+void* Data_80005790; //80005790 80005748 +72
+void* Data_80005798; //80005798 +80
 
 #if 0
 void* Data_800057A8; //800057A8 +96
@@ -92,10 +117,26 @@ char bData_800058BA; //800058BA
 unsigned short wData_800058BC; //800058BC +372
 char* Data_800058D0; //800058D0 +392
 
+char bData_80005B48; //80005B48 0x80005000 +2888
+int Data_80005B4C; //80005B4C 0x80005000 +2892
+
+int Data_80005BB8; //80005BB8 +3000
+int Data_80005bbc; //80005bbc
+int Data_80005bc0; //80005bc0
+int Data_80005bc4; //80005bc4
+
+
+void dwc3_ep0_out_start(struct dwc3 *dwc);
+
 
 struct dwc3* get_dwc()
 {
 	return &Data_80005950;
+}
+
+struct Struct_80005748_* get_80005748()
+{
+	return &Data_80005748_;
 }
 
 extern unsigned int OTP_JUDGE_BIT(unsigned int offset);
@@ -120,43 +161,6 @@ int func_1338(int* a, int* b)
 void func_1500(void)
 {
 
-}
-
-
-/* de8 - complete */
-void func_de8(int a)
-{
-#define OTP_BIT_SECUREBOOT		3494 //0xda6
-#define OTP_USB2SRAM			3522 //0xdc2
-
-	if (OTP_JUDGE_BIT(OTP_USB2SRAM) && OTP_JUDGE_BIT(OTP_BIT_SECUREBOOT))
-	{
-		prints("Security: Fobidden to enter USB Device Mode!");
-		while (1);
-	}
-
-	if (a != 1)
-	{
-		REG32(ISO_COLD_RST9) |= (1 << 2);
-
-		func_d8d8();
-
-		sync();
-	}
-	else
-	{
-		Data_80005078 = func_8140();
-
-		if ((Data_80005078 == 1) ||
-				(REG32(ISO_COLD_RST9) & (1 << 2)))
-		{
-			REG32(ISO_COLD_RST9) &= ~(1 << 2);
-
-			prints("u");
-
-			func_a284();
-		}
-	}
 }
 
 
@@ -1027,6 +1031,8 @@ static int dwc3_core_init(void)
 /* 9f2c - todo */
 void func_9f2c(char a)
 {
+	unsigned int reg;
+
 	if (a)
 	{
 		Data_80005748_.Data_80005748 = func_12abc(81); //malloc
@@ -1047,8 +1053,13 @@ void func_9f2c(char a)
 	Data_80005748_.bData_800058BA = 0;
 	Data_80005748_.bData_80005934 = 0;
 
-	REG32(0x981e8800) &= ~0x03;
-	REG32(0x981e8800) &= 0xff7fe7fb;
+	reg = REG32(0x981e8800);
+	reg &= ~0x03;
+	REG32(0x981e8800) = reg;
+
+	reg = REG32(0x981e8800);
+	reg &= 0xff7fe7fb;
+	REG32(0x981e8800) = reg;
 
 	dwc3_core_init();
 
@@ -1548,6 +1559,54 @@ static inline int dwc3_ep0_start_control_status(struct dwc3_ep *dep)
 }
 
 
+/* inlined */
+static void dwc3_stop_active_transfer(struct dwc3 *dwc, unsigned int epnum, char force)
+{
+	struct dwc3_ep *dep;
+	struct dwc3_gadget_ep_cmd_params params;
+	unsigned int cmd;
+	int ret;
+
+	dep = dwc->eps[epnum];
+
+	if (!dep->resource_index)
+	{
+		prints("no resource.\n");
+		return;
+	}
+
+	/*
+	 * NOTICE: We are violating what the Databook says about the
+	 * EndTransfer command. Ideally we would _always_ wait for the
+	 * EndTransfer Command Completion IRQ, but that's causing too
+	 * much trouble synchronizing between us and gadget driver.
+	 *
+	 * We have discussed this with the IP Provider and it was
+	 * suggested to giveback all requests here, but give HW some
+	 * extra time to synchronize with the interconnect. We're using
+	 * an arbitraty 100us delay for that.
+	 *
+	 * Note also that a similar handling was tested by Synopsys
+	 * (thanks a lot Paul) and nothing bad has come out of it.
+	 * In short, what we're doing is:
+	 *
+	 * - Issue EndTransfer WITH CMDIOC bit set
+	 * - Wait 100us
+	 */
+
+	cmd = DWC3_DEPCMD_ENDTRANSFER;
+	cmd |= force ? DWC3_DEPCMD_HIPRI_FORCERM : 0;
+	cmd |= DWC3_DEPCMD_CMDIOC;
+	cmd |= DWC3_DEPCMD_PARAM(dep->resource_index);
+	memset(&params, 0, sizeof(params));
+	ret = dwc3_send_gadget_ep_cmd(dwc, dep->number, cmd, &params);
+
+	dep->resource_index = 0;
+	dep->flags &= ~DWC3_EP_BUSY;
+	udelay(0, 100);
+}
+
+
 static int dwc3_ep0_set_config(struct dwc3 *dwc, struct usb_ctrlrequest *ctrl)
 {
 	int ret;
@@ -1555,33 +1614,9 @@ static int dwc3_ep0_set_config(struct dwc3 *dwc, struct usb_ctrlrequest *ctrl)
 	if (Data_80005950.Data_488 != 0)
 	{
 		//0xade0
-		struct dwc3_ep* x21;
-		char w22;
-
 		prints("ENUM - stop ep4/ep3\n");
 
-		x21 = dwc->eps[4];
-		w22 = x21->resource_index;
-
-		if (w22 == 0)
-		{
-			//0xaea0
-			prints("no resource.\n");
-			//->0xae3c
-		}
-		else
-		{
-			//adf8
-			struct dwc3_gadget_ep_cmd_params sp_0x30;
-			memset(&sp_0x30, 0, 12);
-
-			dwc3_send_gadget_ep_cmd(dwc, x21->number, 0x908 | (w22 << 16), &sp_0x30);
-
-			x21->resource_index = 0;
-			x21->flags &= ~0x10;
-
-			udelay(0, 100);
-		}
+		dwc3_stop_active_transfer(dwc, 4, 1);
 		//ae3c
 		func_a2d4(dwc->eps[3]);
 		func_a2d4(dwc->eps[4]);
@@ -1589,11 +1624,11 @@ static int dwc3_ep0_set_config(struct dwc3 *dwc, struct usb_ctrlrequest *ctrl)
 		Data_80005950.Data_488 = 0;
 	}
 	//ac60
-	bData_800058B9 = 4;
+	Data_80005748_.bData_800058B9 = 4;
 
-	Data_80005010.bLength = 7;
+	Data_80005010.bLength = USB_DT_ENDPOINT_SIZE;
 	Data_80005010.bDescriptorType = 0;
-	Data_80005010.bmAttributes = 3;
+	Data_80005010.bmAttributes = 0x02;
 
 	ret = __dwc3_gadget_ep_enable(dwc->eps[3], &Data_80005010);
 	if (ret != 0)
@@ -1661,8 +1696,9 @@ static int dwc3_ep0_set_config(struct dwc3 *dwc, struct usb_ctrlrequest *ctrl)
 	default:
 		ret = -EINVAL;
 	}
-	return ret;
 #endif
+
+	return ret;
 }
 
 
@@ -1701,7 +1737,7 @@ static int dwc3_ep0_set_address(struct dwc3 *dwc, struct usb_ctrlrequest *ctrl)
 	else
 		usb_gadget_set_state(&dwc->gadget, USB_STATE_DEFAULT);
 #else
-	dwc->Data_440/*ep0state*/ = 3; //EP0_STATUS_PHASE
+	dwc->ep0state = 3; //EP0_STATUS_PHASE
 #endif
 	return 0;
 }
@@ -1711,10 +1747,47 @@ static int dwc3_ep0_set_address(struct dwc3 *dwc, struct usb_ctrlrequest *ctrl)
 static int dwc3_ep0_handle_status(struct dwc3 *dwc,
 		struct usb_ctrlrequest *ctrl)
 {
-	dwc->Data_440 = 2;
+	dwc->ep0state = 2;
 	bData_800058BA = 0;
 
-	return dwc3_ep0_start_trans(dwc, 1, Data_800058B0, 2, 0x50);
+	return dwc3_ep0_start_trans(dwc, 1, Data_800058B0, 2, DWC3_TRBCTL_CONTROL_DATA);
+}
+
+
+static void* get_descriptor(unsigned short descriptor_type, unsigned int index, unsigned short* w0)
+{
+	void* x2;
+
+	Data_80005748_.Data_800058B0[0] = 1;
+
+	if (descriptor_type == 2) //USB_DESCRIPTOR_TYPE_CONFIGURATION?
+	{
+		//0xae8c
+		/*Data_80005748_.*/Data_96[2].Data_0 = /*Data_80005748_.*/Data_96[0].Data_0;
+		/*Data_80005748_.*/Data_96[2].wData_8 = /*Data_80005748_.*/Data_96[0].wData_8;
+		//->0xace4
+	}
+	else if (descriptor_type == 3) //USB_DESCRIPTOR_TYPE_STRING?
+	{
+		//0xae58
+		x2 = /*Data_80005748_.*/Data_96[3].Data_0;
+		x2 = ((char*)x2) + 32 * index;
+
+		if (index == 3)
+		{
+			//0xae78 -TODO
+			x2 = (char*)x2 + 32 * Data_80005748_.wData_800058BE;
+		}
+
+		*w0 = ((char*)x2)[0];
+
+		return x2;
+	}
+	//ace4
+	x2 = /*Data_80005748_.*/Data_96[descriptor_type].Data_0;
+	*w0 = /*Data_80005748_.*/Data_96[descriptor_type].wData_8;
+
+	return x2;
 }
 
 
@@ -1732,16 +1805,27 @@ static int dwc3_ep0_std_request(struct dwc3 *dwc, struct usb_ctrlrequest *ctrl)
 	case USB_REQ_GET_DESCRIPTOR:
 		//ACB8
 		{
-			//		prints("USB_REQ_GET_DESCRIPTOR: TODO");
+			unsigned short w0;
+			void* x2 = get_descriptor(ctrl->wValue >> 8, ctrl->wValue & 0xFF, &w0);
+			//ad00
+			if (ctrl->wLength > w0)
+			{
+				ctrl->wLength = w0;
+			}
+			//ad14
+			if (dwc->three_stage_setup == 1)
+			{
+				dwc3_ep0_start_trans(dwc, 1, x2, ctrl->wLength, DWC3_TRBCTL_CONTROL_DATA);
 
-			Data_800058B0[0] = 1;
+				dwc->ep0state = 2; //EP0_DATA_PHASE
+			}
+			else
+			{
+				//0xada4
+				dwc3_ep0_start_trans(dwc, 1, x2, ctrl->wLength, DWC3_TRBCTL_NORMAL);
 
-			//(ctrl->wValue >> 8)
-
-			//ad28
-			dwc3_ep0_start_trans(dwc, 1, 42, 42, 0x50);
-
-			dwc->Data_440/*ep0state*/ = 2; //EP0_DATA_PHASE
+				dwc->ep0state = 3; //EP0_STATUS_PHASE
+			}
 		}
 		break;
 
@@ -1813,13 +1897,16 @@ static void dwc3_ep0_inspect_setup(struct dwc3 *dwc,
 	}
 	else
 	{
+		//0xac34
 		dwc->three_stage_setup = 1; //true;
 		dwc->ep0_expect_in = !!(ctrl->bRequestType & USB_DIR_IN);
 //		dwc->ep0_next_event = DWC3_EP0_NRDY_DATA;
 	}
-
+	//ac04
 	if ((ctrl->bRequestType & USB_TYPE_MASK) == USB_TYPE_STANDARD)
+	{
 		ret = dwc3_ep0_std_request(dwc, ctrl);
+	}
 
 #if 0
 	struct usb_ctrlrequest *ctrl = dwc->ctrl_req;
@@ -1852,16 +1939,6 @@ out:
 	if (ret < 0)
 		dwc3_ep0_stall_and_restart(dwc);
 #endif
-}
-
-
-void dwc3_ep0_out_start(struct dwc3 *dwc)
-{
-	int				ret;
-
-	ret = dwc3_ep0_start_trans(dwc, 0, dwc->/*ctrl_req_addr*/Data_0, 8,
-				   DWC3_TRBCTL_CONTROL_SETUP); //, 0);
-//	WARN_ON(ret < 0);
 }
 
 
@@ -1900,7 +1977,7 @@ static void dwc3_ep0_complete_status(struct dwc3 *dwc,
 		dev_dbg(dwc->dev, "Setup Pending received");
 #endif
 
-	dwc->/*ep0state*/Data_440 = EP0_SETUP_PHASE;
+	dwc->ep0state = EP0_SETUP_PHASE;
 	dwc3_ep0_out_start(dwc);
 
 	struct dwc3* x19 = &Data_80005950;
@@ -1935,7 +2012,7 @@ static inline void dwc3_ep0_xfer_complete(struct dwc3 *dwc,
 	dep->resource_index = 0;
 	dwc->setup_packet_pending = 0; //false;
 
-	switch (dwc->/*ep0state*/Data_440)
+	switch (dwc->ep0state)
 	{
 	case EP0_SETUP_PHASE:
 		//dev_vdbg(dwc->dev, "Setup Phase");
@@ -2028,7 +2105,7 @@ static inline void dwc3_ep0_xfernotready(struct dwc3 *dwc,
 		dev_vdbg(dwc->dev, "Control Status");
 #endif
 
-		dwc->/*ep0state*/Data_440 = EP0_STATUS_PHASE;
+		dwc->ep0state = EP0_STATUS_PHASE;
 
 #if 0
 		if (dwc->delayed_status) {
@@ -2090,6 +2167,35 @@ void dwc3_ep0_interrupt(struct dwc3 *dwc,
 }
 
 
+/* aeb0 - complete */
+void dwc3_ep0_out_start(struct dwc3 *dwc)
+{
+	int				ret;
+
+	ret = dwc3_ep0_start_trans(dwc, 0, dwc->/*ctrl_req_addr*/Data_0, 8,
+				   DWC3_TRBCTL_CONTROL_SETUP); //, 0);
+//	WARN_ON(ret < 0);
+}
+
+
+/* aec4 - todo */
+int func_aec4(struct dwc3* dwc)
+{
+	int ret = 0;
+
+	dwc->Data_8 = simple_malloc(16);
+	memset(dwc->Data_8, 0, 16);
+
+	dwc->Data_16 = simple_malloc(16);
+	memset(dwc->Data_16, 0, 16);
+
+	dwc->Data_0 = simple_malloc(8);
+	memset(dwc->Data_0, 0, 8);
+
+	return ret;
+}
+
+
 /* af2c - todo */
 int func_af2c(struct dwc3* x19)
 {
@@ -2124,14 +2230,14 @@ int func_af2c(struct dwc3* x19)
 	dwc3_writel(DWC3_DCFG, reg);
 
 	Data_80005020.wMaxPacketSize = 64;
-	Data_80005020.bLength = 7;
+	Data_80005020.bLength = USB_DT_ENDPOINT_SIZE;
 	Data_80005020.bDescriptorType = USB_DT_ENDPOINT;
 	Data_80005020.bmAttributes = 0;
 
 	__dwc3_gadget_ep_enable(x19->eps[0], &Data_80005020);
 	__dwc3_gadget_ep_enable(x19->eps[1], &Data_80005020);
 
-	x19->Data_440 = 1; //ep0state = EP0_SETUP_PHASE ?
+	x19->ep0state = 1; //EP0_SETUP_PHASE ?
 
 	dwc3_ep0_start_trans(x19, 0, x19->Data_0, 8,
 			DWC3_TRBCTL_CONTROL_SETUP);
@@ -2186,59 +2292,168 @@ void func_b04c(void)
 }
 
 
-/* b748 - todo */
+/* b748 - complete */
 void func_b748(int a)
 {
-	prints("func_b748");
-	prints("func_b748");
-	prints("func_b748");
-	prints("func_b748");
-	prints("func_b748");
-	prints("func_b748");
-	prints("func_b748");
-	prints("func_b748");
-	prints("func_b748");
-	prints("func_b748");
-	prints("func_b748");
-	prints("func_b748");
-	prints("func_b748");
-	prints("func_b748");
-	prints("func_b748");
-	prints("func_b748");
-	prints("func_b748");
-	prints("func_b748");
-	prints("func_b748");
-	prints("func_b748");
-	prints("func_b748");
-	prints("func_b748");
+	if (!a)
+	{
+		REG32(ISO_SB2_0) &= ~(1 << 5); //usb2sram_ctrl = 0
+	}
+	else
+	{
+		REG32(ISO_SB2_0) |= (1 << 5); //usb2sram_ctrl = 1
+	}
+
+	func_c79c(10);
+}
+
+
+/* b77c - todo */
+void func_b77c(void)
+{
+	extern unsigned int d_28; //0x80006920
+
+	if ( ((char*)(Data_80005748_.Data_80005750))[15] == 0xf5 )
+	{
+		func_b748(1);
+
+		Data_80005788 = Data_80005790 = d_28 + 0x410;
+	}
+	else
+	{
+		Data_80005788 = Data_80005790 = 0x20000;
+	}
+}
+
+
+/* b7cc - todo */
+int func_b7cc(void)
+{
+	int i;
+	struct dwc3_event_buffer* evt;
+
+	func_b748(0);
+
+	if (Data_8000502C == 0)
+	{
+		return 0;
+	}
+
+	prints("Malloc DDR\n");
+
+	func_aec4(&Data_80005950);
+
+	Data_80005950.num_event_buffers = 6;
+
+	Data_80005950.ev_buffs = simple_malloc(6 * sizeof(struct dwc3_event_buffer*));
+	memset(Data_80005950.ev_buffs, 0, sizeof(struct dwc3_event_buffer*));
+
+	for (i = 0; i < 6; i++)
+	{
+		evt = simple_malloc(sizeof(struct dwc3_event_buffer));
+		memset(evt, 0, sizeof(struct dwc3_event_buffer));
+
+		evt->dwc = &Data_80005950;
+		evt->length = 0x100;
+		evt->buf = simple_malloc(0x100);
+		memset(evt->buf, 0, 0x100);
+
+		Data_80005950.ev_buffs[i] = evt;
+	}
+
+	dwc3_event_buffers_setup();
+
+	sync();
+
+	Data_80005748_.Data_80005750 = simple_malloc(88);
+	memset(Data_80005748_.Data_80005750, 0, 88);
+
+	Data_80005748_.Data_80005758 = simple_malloc(52);
+	memset(Data_80005748_.Data_80005758, 0, 52);
+
+	((unsigned int*)Data_80005748_.Data_80005758)[0] = 0x53425355;
+
+	Data_8000502C = 0;
+	sync();
+
+	return 0;
+}
+
+
+/* b928 - todo */
+void func_b928(int a)
+{
+	prints("func_b928");
+	prints("func_b928");
+	prints("func_b928");
+	prints("func_b928");
+	prints("func_b928");
+	prints("func_b928");
+	prints("func_b928");
+	prints("func_b928");
+	prints("func_b928");
+	prints("func_b928");
+	prints("func_b928");
+	prints("func_b928");
+	prints("func_b928");
+	prints("func_b928");
+	prints("func_b928");
+	prints("func_b928");
+	prints("func_b928");
+	prints("func_b928");
+	prints("func_b928");
+	prints("func_b928");
+	prints("func_b928");
+	prints("func_b928");
+	prints("func_b928");
+	prints("func_b928");
+	prints("func_b928");
+	prints("func_b928");
 }
 
 
 /* c108 - todo */
 void func_c108(struct dwc3 *dwc)
 {
-	prints("func_c108");
-	prints("func_c108");
-	prints("func_c108");
-	prints("func_c108");
-	prints("func_c108");
-	prints("func_c108");
-	prints("func_c108");
-	prints("func_c108");
-	prints("func_c108");
-	prints("func_c108");
-	prints("func_c108");
-	prints("func_c108");
-	prints("func_c108");
-	prints("func_c108");
-	prints("func_c108");
-	prints("func_c108");
-	prints("func_c108");
-	prints("func_c108");
-	prints("func_c108");
-	prints("func_c108");
-	prints("func_c108");
-	prints("func_c108");
+	if (bData_800058BA == 5)
+	{
+		bData_800058BA = 0;
+
+		int a = ((char*)Data_80005750)[15];
+		if (a == 0xf2)
+		{
+			func_11b0(); // Watchdog reset?
+		}
+		else if (a == 0xf9)
+		{
+			if ((((char*)Data_80005750)[13] & 0xc0) &&
+					((((char*)Data_80005750)[13] & 0x0f) == 3))
+			{
+				prints("IG\n");
+
+				func_1844(Data_80005798);
+			}
+		}
+		else if (a == 0xfa)
+		{
+			Data_80005B4C = 1;
+		}
+
+		if (Data_80005B4C != 0)
+		{
+			func_b7cc(); //Malloc DDR Event Buffers
+		}
+
+		flush_cache(Data_80005750, Data_80005750 + 0x764/*+1892*/);
+
+		func_a7f8(dwc, 4, Data_80005750, 512);
+	}
+	else if (bData_800058BA == 1)
+	{
+		bData_800058BA = 0x05;
+
+		func_b928(bData_80005B48);
+	}
 }
 
 
@@ -2486,12 +2701,6 @@ void func_c568(void)
 			}
 		}
 	}
-}
-
-
-/* c79c - complete */
-void func_c79c(int a)
-{
 }
 
 

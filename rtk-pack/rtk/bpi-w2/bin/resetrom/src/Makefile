@@ -17,7 +17,7 @@ BIN  := $(addsuffix .bin,$(ELF))
 DIS  := $(addsuffix .dis,$(ELF))
 
 SOBJS	:= start64.o vectors.o cache.o
-COBJS	:= timer.o main.o otp.o uart.o utils.o todo.o func1.o
+COBJS	:= timer.o data1.o main.o otp.o func_4f00.o uart.o utils.o todo.o func1.o todo1.o
 DOBJS := debug.o
 
 OBJS	:= $(addprefix $(obj),$(COBJS))
@@ -27,7 +27,8 @@ DEBUG_OBJS	:= $(addprefix $(obj),$(DOBJS))
 gcclibdir := $(shell dirname `$(CC) -print-libgcc-file-name`)
 
 CFLAGS += -mlittle-endian -mtune=cortex-a53 -march=armv8-a -mcpu=cortex-a53 
-CFLAGS += -march=armv8-a -mlittle-endian -mabi=lp64 -g -fuse-tls -fomit-frame-pointer -fno-common -fno-pic 
+CFLAGS += -march=armv8-a -mlittle-endian -mabi=lp64 -fomit-frame-pointer 
+####CFLAGS += -fno-common -fno-pic 
 CFLAGS += -fno-builtin -ffreestanding
  
 all:	$(OBJS) $(DEBUG_OBJS) $(SSOBJS) $(ELF) $(BIN)

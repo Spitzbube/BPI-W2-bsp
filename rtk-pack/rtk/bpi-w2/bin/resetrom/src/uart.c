@@ -2,7 +2,7 @@
 #include "uart.h"
 
 
-volatile UARTREG *UartReg = (UARTREG *) UARTREG_BASE_ADDRESS; //80005048
+volatile UARTREG *UartReg = (UARTREG *) UARTREG_BASE_ADDRESS; //80005008 0x80005000 +8
 int Data_80005348[256];
 int Data_80005dd4; //80005dd4
 

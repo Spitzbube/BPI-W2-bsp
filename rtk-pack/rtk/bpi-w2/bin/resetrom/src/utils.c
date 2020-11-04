@@ -2,6 +2,15 @@
 #include "register.h"
 
 
+
+/* c79c - complete */
+void func_c79c(int a)
+{
+}
+
+
+
+
 /* d678 - complete (-O2) */
 int func_d678(unsigned int addr)
 {

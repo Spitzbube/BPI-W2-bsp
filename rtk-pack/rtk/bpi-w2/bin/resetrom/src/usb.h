@@ -77,12 +77,15 @@
 #define DWC3_DEPCMD_PARAM_SHIFT		16
 #define DWC3_DEPCMD_PARAM(x)		((x) << DWC3_DEPCMD_PARAM_SHIFT)
 #define DWC3_DEPCMD_GET_RSC_IDX(x)	(((x) >> DWC3_DEPCMD_PARAM_SHIFT) & 0x7f)
+#define DWC3_DEPCMD_HIPRI_FORCERM	(1 << 11)
 #define DWC3_DEPCMD_CMDACT			(1 << 10)
+#define DWC3_DEPCMD_CMDIOC			(1 << 8)
 
-#define DWC3_DEPCMD_SETEPCONFIG			(0x01 << 0)
-#define DWC3_DEPCMD_SETTRANSFRESOURCE	(0x02 << 0)
-#define DWC3_DEPCMD_STARTTRANSFER		(0x06 << 0)
 #define DWC3_DEPCMD_DEPSTARTCFG			(0x09 << 0)
+#define DWC3_DEPCMD_ENDTRANSFER			(0x08 << 0)
+#define DWC3_DEPCMD_STARTTRANSFER		(0x06 << 0)
+#define DWC3_DEPCMD_SETTRANSFRESOURCE	(0x02 << 0)
+#define DWC3_DEPCMD_SETEPCONFIG			(0x01 << 0)
 
 /* DEPCFG parameter 1 */
 #define DWC3_DEPCFG_XFER_COMPLETE_EN	(1 << 8)
@@ -212,9 +215,10 @@ struct dwc3_event_buffer {
 
 #define DWC3_EVENT_PENDING	(1UL << 0)
 
-	/*dma_addr_t*/void*		dma;
+	/*dma_addr_t*/void*		dma; //24
 
-	/*struct dwc3*/void		*dwc;
+	/*struct dwc3*/void		*dwc; //32
+	//40
 };
 
 
@@ -249,17 +253,20 @@ struct dwc3
 #if 0
 	char bData_432; //432
 #else
+	unsigned		bit0:1; //0x01
 	unsigned		three_stage_setup:1; //0x02
+	unsigned		bit2:1; //0x04
+	unsigned		ep0_expect_in:1; //0x08
+	unsigned		bit4:1; //0x10
 	unsigned		setup_packet_pending:1;	//0x20
 
-	unsigned		ep0_expect_in:1;
 	unsigned		needs_fifo_resize:1;	//432:0x01 //TODO
 	unsigned		pullups_connected:1;	//432:0x02 //TODO
 	unsigned		resize_fifos:1;			//432:0x04 //TODO
 	unsigned		start_config_issued:1;	//432:0x10 //TODO
 #endif
 	int fill_436; //436
-	int Data_440; //440 ep0state?
+	int ep0state; //440
 	int fill_444[3]; //444
 	char fill_456; //456
 	char num_out_eps; //457

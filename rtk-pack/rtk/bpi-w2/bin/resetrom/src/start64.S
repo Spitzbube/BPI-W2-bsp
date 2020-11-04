@@ -1,7 +1,9 @@
 
 .text
 .global start
+.global d_28
 .global d_30
+.global func_258
 .extern vector_el1
 .extern vector_el2
 .extern vector_el3
@@ -32,10 +34,24 @@ l_38:
 	mov	sp, x0
 	bl		func_264
 
+
+func_258:
+	ret
+
+
 func_264:
 	ret
 
 l_8b4:
 
 
+/*
+.data
+Data_80005024:
+	.dword 0
+*/
+
+.bss
+Data_80005028:
+	.dword 0
 

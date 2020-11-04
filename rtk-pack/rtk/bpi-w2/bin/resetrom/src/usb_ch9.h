@@ -50,11 +50,11 @@ typedef unsigned short		__le16;
 
 struct usb_ctrlrequest
 {
-	__u8 bRequestType;
-	__u8 bRequest;
-	__le16 wValue;
-	__le16 wIndex;
-	__le16 wLength;
+	__u8 bRequestType; //0
+	__u8 bRequest; //1
+	__le16 wValue; //2
+	__le16 wIndex; //4
+	__le16 wLength; //6
 } __attribute__ ((packed));
 
 
